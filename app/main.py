@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 import signal
 import threading
-import time
 import traceback
 
 from dataclasses import dataclass
@@ -127,31 +126,30 @@ class JobError(Exception):
     pass
 
 
-def request_stop(_signum, _frame) -> None:
-    stop_event.set()
-
-
 class Logger:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path | None = None) -> None:
         self.path = path
 
     def write(self, message: str) -> None:
         line = f"[{iso_utc()}] {message}"
         print(line, flush=True)
+
+        if self.path is None:
+            return
+
         with self.path.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
 
     def tail(self, lines: int = 10) -> str:
-        if not self.path.exists():
+        if self.path is None or not self.path.exists():
             return ""
 
         content = self.path.read_text(encoding="utf-8", errors="replace").splitlines()
         return "\n".join(content[-lines:])
 
 
-class StartupLogger:
-    def write(self, message: str) -> None:
-        print(f"[{iso_utc()}] {message}", flush=True)
+def request_stop(_signum, _frame) -> None:
+    stop_event.set()
 
 
 def parse_markdown_metadata(path: Path) -> dict[str, str]:
@@ -357,7 +355,7 @@ def mark_failed(job: UploadJob, message: str, logger: Logger) -> None:
         uploading.unlink()
 
 
-def telegram_send(telegram: Telegram, text: str, logger: Logger | StartupLogger) -> None:
+def telegram_send(telegram: Telegram, text: str, logger: Logger) -> None:
     try:
         message_id = telegram.send(text)
         logger.write("telegram send ok" if message_id is not None else "telegram disabled")
@@ -451,11 +449,11 @@ def main() -> int:
 
     config = Config()
     telegram = create_telegram(config)
-    startup_logger = StartupLogger()
+    logger = Logger()
 
-    startup_logger.write(f"youtube-uploader v{config.version} started")
-    validate_token(startup_logger)
-    telegram_send(telegram, f"🛎️ youtube-uploader v{config.version} started and validated", startup_logger)
+    logger.write(f"youtube-uploader v{config.version} started")
+    validate_token(logger)
+    telegram_send(telegram, f"🛎️ youtube-uploader v{config.version} started and validated", logger)
 
     while not stop_event.is_set():
         try:
@@ -469,13 +467,13 @@ def main() -> int:
             stop_event.set()
 
         except Exception as exc:
-            startup_logger.write(f"main loop error: {type(exc).__name__}: {exc}")
-            startup_logger.write(traceback.format_exc().rstrip())
-            telegram_send(telegram, f"❌ youtube-uploader main loop error\n{type(exc).__name__}: {exc}", startup_logger)
+            logger.write(f"main loop error: {type(exc).__name__}: {exc}")
+            logger.write(traceback.format_exc().rstrip())
+            telegram_send(telegram, f"❌ youtube-uploader main loop error\n{type(exc).__name__}: {exc}", logger)
             stop_event.wait(config.retry_base_seconds)
 
-    startup_logger.write("stopped")
-    telegram_send(telegram, f"🛑 youtube-uploader v{config.version} stopped", startup_logger)
+    logger.write("stopped")
+    telegram_send(telegram, f"🛑 youtube-uploader v{config.version} stopped", logger)
     return 0
 
 
