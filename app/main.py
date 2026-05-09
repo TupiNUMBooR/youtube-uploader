@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import os
+import signal
+import threading
 import time
 import traceback
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -20,6 +23,9 @@ FAILED_FILE = "youtube-uploader-failed.txt"
 LOG_FILE = "youtube-uploader.log"
 
 PRIVACY_VALUES = {"private", "unlisted", "public"}
+THUMBNAIL_MAX_BYTES = 2_097_152
+
+stop_event = threading.Event()
 
 
 def utc_now() -> datetime:
@@ -75,7 +81,6 @@ class UploadState:
     attempts: int = 0
     base_priority: int = 0
     next_retry_at: datetime | None = None
-    message_id: int | None = None
     last_error: str = ""
 
     @property
@@ -122,6 +127,10 @@ class JobError(Exception):
     pass
 
 
+def request_stop(_signum, _frame) -> None:
+    stop_event.set()
+
+
 class Logger:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -138,6 +147,11 @@ class Logger:
 
         content = self.path.read_text(encoding="utf-8", errors="replace").splitlines()
         return "\n".join(content[-lines:])
+
+
+class StartupLogger:
+    def write(self, message: str) -> None:
+        print(f"[{iso_utc()}] {message}", flush=True)
 
 
 def parse_markdown_metadata(path: Path) -> dict[str, str]:
@@ -172,16 +186,10 @@ def parse_state_file(path: Path) -> dict[str, str]:
 def read_upload_state(directory: Path, base_priority: int) -> UploadState:
     raw = parse_state_file(directory / UPLOADING_FILE)
 
-    attempts = int(raw["attempts"]) if raw.get("attempts") else 0
-    stored_priority = int(raw["base_priority"]) if raw.get("base_priority") else base_priority
-    next_retry_at = parse_iso_utc(raw["next_retry_at"]) if raw.get("next_retry_at") else None
-    message_id = int(raw["telegram_message_id"]) if raw.get("telegram_message_id") else None
-
     return UploadState(
-        attempts=attempts,
-        base_priority=stored_priority,
-        next_retry_at=next_retry_at,
-        message_id=message_id,
+        attempts=int(raw["attempts"]) if raw.get("attempts") else 0,
+        base_priority=int(raw["base_priority"]) if raw.get("base_priority") else base_priority,
+        next_retry_at=parse_iso_utc(raw["next_retry_at"]) if raw.get("next_retry_at") else None,
         last_error=raw.get("last_error", ""),
     )
 
@@ -197,8 +205,6 @@ def write_upload_state(job: UploadJob) -> None:
 
     if state.next_retry_at:
         lines.append(f"next_retry_at: {iso_utc(state.next_retry_at)}")
-    if state.message_id is not None:
-        lines.append(f"telegram_message_id: {state.message_id}")
     if state.last_error:
         lines.append(f"last_error: {state.last_error}")
 
@@ -206,8 +212,7 @@ def write_upload_state(job: UploadJob) -> None:
 
 
 def retry_delay(config: Config, attempts: int) -> int:
-    delay = config.retry_base_seconds * (2 ** max(0, attempts - 1))
-    return min(delay, config.retry_max_seconds)
+    return min(config.retry_base_seconds * (2 ** max(0, attempts - 1)), config.retry_max_seconds)
 
 
 def resolve_declared_file(directory: Path, meta: dict[str, str], key: str, required: bool) -> Path | None:
@@ -225,17 +230,16 @@ def resolve_declared_file(directory: Path, meta: dict[str, str], key: str, requi
 
 
 def load_job(directory: Path) -> UploadJob:
-    meta_path = directory / META_FILE
-    if not meta_path.is_file():
-        raise JobError(f"missing {META_FILE}")
-
-    meta = parse_markdown_metadata(meta_path)
+    meta = parse_markdown_metadata(directory / META_FILE)
 
     video_file = resolve_declared_file(directory, meta, "video_file", required=True)
     thumbnail_file = resolve_declared_file(directory, meta, "thumbnail_file", required=False)
 
     if video_file is None:
         raise JobError("video_file resolved to nothing")
+
+    if thumbnail_file and thumbnail_file.stat().st_size > THUMBNAIL_MAX_BYTES:
+        raise JobError(f"thumbnail_file is too large: {thumbnail_file.name}; max is {THUMBNAIL_MAX_BYTES} bytes")
 
     privacy = meta.get("privacy", "").strip()
     if not privacy:
@@ -251,32 +255,40 @@ def load_job(directory: Path) -> UploadJob:
         parse_iso_utc(meta["publish_at"])
 
     priority = int(meta.get("priority", "").strip() or "0")
-    state = read_upload_state(directory, priority)
 
     return UploadJob(
         directory=directory,
         meta=meta,
         video_file=video_file,
         thumbnail_file=thumbnail_file,
-        state=state,
+        state=read_upload_state(directory, priority),
     )
 
 
 def mark_validation_failed(directory: Path, message: str) -> None:
+    logger = Logger(directory / LOG_FILE)
+    logger.write(f"validation failed: {message}")
+
     (directory / FAILED_FILE).write_text(
         "\n".join(
             [
                 f"failed_at: {iso_utc()}",
                 "stage: validation",
                 f"message: {message}",
+                "last_log_lines:",
+                logger.tail(10),
             ]
         )
         + "\n",
         encoding="utf-8",
     )
 
+    uploading = directory / UPLOADING_FILE
+    if uploading.exists():
+        uploading.unlink()
 
-def discover_jobs(logger: Logger) -> list[UploadJob]:
+
+def discover_jobs() -> list[UploadJob]:
     jobs: list[UploadJob] = []
     now = utc_now()
 
@@ -291,7 +303,6 @@ def discover_jobs(logger: Logger) -> list[UploadJob]:
             job = load_job(directory)
         except Exception as exc:
             mark_validation_failed(directory, str(exc))
-            logger.write(f"bad job {directory.name}: {exc}")
             continue
 
         if job.upload_since and now < job.upload_since:
@@ -346,24 +357,27 @@ def mark_failed(job: UploadJob, message: str, logger: Logger) -> None:
         uploading.unlink()
 
 
-def ensure_telegram_message(job: UploadJob, telegram: Telegram) -> None:
-    if job.state.message_id is not None:
-        return
+def telegram_send(telegram: Telegram, text: str, logger: Logger | StartupLogger) -> None:
+    try:
+        message_id = telegram.send(text)
+        logger.write("telegram send ok" if message_id is not None else "telegram disabled")
+    except Exception as exc:
+        logger.write(f"telegram send failed: {type(exc).__name__}: {exc}")
 
-    job.state.message_id = telegram.send(
+
+def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
+    logger = Logger(job.directory / LOG_FILE)
+
+    telegram_send(
+        telegram,
         f"📼 YouTube upload started\n"
         f"folder: {job.directory.name}\n"
         f"video: {job.video_file.name}\n"
         f"title: {job.title}\n"
         f"privacy: {job.privacy}\n"
-        f"priority: {job.state.current_priority}"
+        f"priority: {job.state.current_priority}",
+        logger,
     )
-    write_upload_state(job)
-
-
-def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
-    logger = Logger(job.directory / LOG_FILE)
-    ensure_telegram_message(job, telegram)
 
     try:
         job.state.attempts += 1
@@ -376,12 +390,13 @@ def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
         video_id, url = upload_video(job, logger)
         mark_uploaded(job, video_id, url)
 
-        telegram.edit(
-            job.state.message_id,
+        telegram_send(
+            telegram,
             f"✅ YouTube upload complete\n"
             f"folder: {job.directory.name}\n"
             f"title: {job.title}\n"
             f"url: {url}",
+            logger,
         )
 
         logger.write("upload job complete")
@@ -396,13 +411,14 @@ def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
 
         if job.state.attempts >= config.max_upload_attempts:
             mark_failed(job, message, logger)
-            telegram.edit(
-                job.state.message_id,
+            telegram_send(
+                telegram,
                 f"❌ YouTube upload failed\n"
                 f"folder: {job.directory.name}\n"
                 f"title: {job.title}\n"
                 f"attempts: {job.state.attempts}/{config.max_upload_attempts}\n"
                 f"last 10 log lines:\n{logger.tail(10)}",
+                logger,
             )
             return False
 
@@ -410,8 +426,8 @@ def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
         job.state.next_retry_at = utc_now() + timedelta(seconds=delay)
         write_upload_state(job)
 
-        telegram.edit(
-            job.state.message_id,
+        telegram_send(
+            telegram,
             f"⚠️ YouTube upload retry scheduled\n"
             f"folder: {job.directory.name}\n"
             f"title: {job.title}\n"
@@ -419,41 +435,48 @@ def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
             f"current_priority: {job.state.current_priority}\n"
             f"next_retry_at: {iso_utc(job.state.next_retry_at)}\n"
             f"error: {message}",
+            logger,
         )
 
         return False
 
 
+def create_telegram(config: Config) -> Telegram:
+    return Telegram(TelegramConfig(bot_token=config.telegram_bot_token, chat_id=config.telegram_chat_id))
+
+
 def main() -> int:
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
+
     config = Config()
-    telegram = Telegram(
-        TelegramConfig(
-            bot_token=config.telegram_bot_token,
-            chat_id=config.telegram_chat_id,
-        )
-    )
-    logger = Logger(WORKSPACE / LOG_FILE)
+    telegram = create_telegram(config)
+    startup_logger = StartupLogger()
 
-    validate_token(logger)
-    telegram.send(f"🛎️ youtube-uploader v{config.version} started and validated")
+    startup_logger.write(f"youtube-uploader v{config.version} started")
+    validate_token(startup_logger)
+    telegram_send(telegram, f"🛎️ youtube-uploader v{config.version} started and validated", startup_logger)
 
-    while True:
+    while not stop_event.is_set():
         try:
-            jobs = discover_jobs(logger)
+            jobs = discover_jobs()
             if jobs:
                 process_one(jobs[0], config, telegram)
 
-            time.sleep(config.poll_seconds)
+            stop_event.wait(config.poll_seconds)
 
         except KeyboardInterrupt:
-            logger.write("stopped")
-            return 0
+            stop_event.set()
 
         except Exception as exc:
-            logger.write(f"main loop error: {type(exc).__name__}: {exc}")
-            logger.write(traceback.format_exc().rstrip())
-            telegram.send(f"❌ youtube-uploader main loop error\n{type(exc).__name__}: {exc}")
-            time.sleep(config.retry_base_seconds)
+            startup_logger.write(f"main loop error: {type(exc).__name__}: {exc}")
+            startup_logger.write(traceback.format_exc().rstrip())
+            telegram_send(telegram, f"❌ youtube-uploader main loop error\n{type(exc).__name__}: {exc}", startup_logger)
+            stop_event.wait(config.retry_base_seconds)
+
+    startup_logger.write("stopped")
+    telegram_send(telegram, f"🛑 youtube-uploader v{config.version} stopped", startup_logger)
+    return 0
 
 
 if __name__ == "__main__":

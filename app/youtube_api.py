@@ -55,24 +55,25 @@ def upload_video(job: Any, logger: Any) -> tuple[str, str]:
         f"privacy={status['privacyStatus']}"
     )
 
-    request = youtube.videos().insert(
+    response = youtube.videos().insert(
         part="snippet,status",
         body=body,
         media_body=MediaFileUpload(str(job.video_file), resumable=True),
-    )
+    ).execute()
 
-    response = request.execute()
     video_id = response["id"]
     url = f"https://youtu.be/{video_id}"
-
     logger.write(f"video uploaded: {url}")
 
     if job.thumbnail_file:
-        logger.write(f"setting thumbnail: {job.thumbnail_file.name}")
-        youtube.thumbnails().set(
-            videoId=video_id,
-            media_body=MediaFileUpload(str(job.thumbnail_file)),
-        ).execute()
-        logger.write("thumbnail set")
+        try:
+            logger.write(f"setting thumbnail: {job.thumbnail_file.name}")
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(str(job.thumbnail_file)),
+            ).execute()
+            logger.write("thumbnail set")
+        except Exception as exc:
+            logger.write(f"thumbnail failed, video stays uploaded: {type(exc).__name__}: {exc}")
 
     return video_id, url
