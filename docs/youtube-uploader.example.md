@@ -16,6 +16,9 @@ private
 # publish_at
 2026-05-10T08:00:00Z
 
+# priority
+10
+
 # video_file
 video.mp4
 

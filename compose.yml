@@ -7,7 +7,9 @@ services:
     env_file:
       - .env
     environment:
-      - PERIOD_SECONDS: 43200
+      - UPLOAD_PERIOD_SECONDS=43200
+      - RETRY_PERIOD_SECONDS=900
+      - RETRY_PERIOD_TIMES=3
     volumes:
-      - ./token.json:/.auth/token.json
+      - ./.auth/token.json:/.auth/token.json
       - ./.workspace:/workspace

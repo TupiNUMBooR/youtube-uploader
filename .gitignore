@@ -1,2 +1,5 @@
-/workspace
+.venv/
 .env
+.auth
+token.json
+.workspace/
