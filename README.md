@@ -1,13 +1,15 @@
 # youtube-uploader
 
+![](docs/image.jpg)
+
+Tiny Docker service that uploads prepared folders from `./.workspace` to YouTube.
+
 ![CI/CD](https://github.com/TupiNUMBooR/youtube-uploader/actions/workflows/ci-cd.yml/badge.svg)
 ![Latest Release](https://img.shields.io/github/release/TupiNUMBooR/youtube-uploader)
 ![Release Date](https://img.shields.io/github/release-date/TupiNUMBooR/youtube-uploader)
 
 ![Top Lang](https://img.shields.io/github/languages/top/TupiNUMBooR/youtube-uploader?logo=python)
 ![Docker](https://img.shields.io/badge/docker-ghcr-blue?logo=docker)
-
-Tiny Docker service that uploads prepared folders from `./.workspace` to YouTube.
 
 Another tool creates a folder with:
 
@@ -116,6 +118,9 @@ Timestamp format:
 ```text
 2026-05-10T08:00:00Z
 ```
+
+Why .md, you may ask? Because it's human-friendly readable and editable.
+Imagine fixing yaml indentation or json quotes by an average user.
 
 ## Upload state
 
