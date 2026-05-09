@@ -1,0 +1,13 @@
+services:
+  youtube-uploader:
+    image: ghcr.io/tupinumboor/youtube-uploader
+    container_name: youtube-uploader-local
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PERIOD_SECONDS: 43200
+    volumes:
+      - ./token.json:/.auth/token.json
+      - ./.workspace:/workspace
