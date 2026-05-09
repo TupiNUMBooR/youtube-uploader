@@ -263,8 +263,8 @@ https://www.googleapis.com/auth/youtube.force-ssl
 
 * Run:
 
-```powershell
-./tools/Auth.ps1
+```sh
+docker compose run --rm -e PORT=4444 -p "4444:4444" -v "./.auth:/.auth" youtube-uploader python oauth.py
 ```
 
 Authorize in browser.
