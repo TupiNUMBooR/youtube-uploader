@@ -6,10 +6,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - UPLOAD_PERIOD_SECONDS=43200
-      - RETRY_PERIOD_SECONDS=900
-      - RETRY_PERIOD_TIMES=3
     volumes:
       - ./.auth/token.json:/.auth/token.json
       - ./.workspace:/workspace
