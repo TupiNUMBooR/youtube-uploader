@@ -6,7 +6,6 @@
 
 ![Top Lang](https://img.shields.io/github/languages/top/TupiNUMBooR/youtube-uploader?logo=python)
 ![Docker](https://img.shields.io/badge/docker-ghcr-blue?logo=docker)
-![YouTube](https://img.shields.io/badge/youtube-uploader-red?logo=youtube)
 
 Tiny Docker service that uploads prepared folders from `./.workspace` to YouTube.
 
