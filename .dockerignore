@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.coverage
+.pytest_cache/
+.venv/
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# Project
+.env
+.auth/
+.workspace/
+
+# Dev
+docs/
+tests/
+tools/
+requirements-dev.txt
+
+# Git
+.git/
