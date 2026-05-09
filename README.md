@@ -26,6 +26,8 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 ```
 
+Put `token.json` in `.auth/` (see below).
+
 Start:
 
 ```bash
