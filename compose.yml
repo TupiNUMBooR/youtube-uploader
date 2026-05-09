@@ -4,8 +4,17 @@ services:
     container_name: youtube-uploader-local
     build: .
     restart: unless-stopped
+
     env_file:
       - .env
+
+    # .env:
+    #   TELEGRAM_BOT_TOKEN=
+    #   TELEGRAM_CHAT_ID=
+
     volumes:
-      - ./.auth/token.json:/.auth/token.json
       - ./.workspace:/workspace
+      - ./.auth/token.json:/.auth/token.json
+
+    # Obtain token.json from client_secret.json:
+    #   docker compose run --rm -e PORT=4444 -p "4444:4444" -v "./.auth:/.auth" youtube-uploader python oauth.py
