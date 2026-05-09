@@ -1,6 +1,6 @@
 from unittest.mock import Mock, patch
 
-from app import oauth
+import oauth
 
 
 def test_create_token_writes_token(tmp_path, monkeypatch):
