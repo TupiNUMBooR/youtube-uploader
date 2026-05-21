@@ -200,3 +200,112 @@ video.mp4
     found = discover_jobs()
 
     assert [job.directory.name for job in found] == ["ready"]
+
+
+def test_load_job_rejects_large_thumbnail(tmp_path: Path) -> None:
+    job_dir = tmp_path / "job-1"
+    video = job_dir / "video.mp4"
+    thumbnail = job_dir / "thumbnail.jpg"
+
+    write_meta(
+        job_dir,
+        """
+# privacy
+private
+
+# video_file
+video.mp4
+
+# thumbnail_file
+thumbnail.jpg
+""",
+    )
+    video.write_bytes(b"fake video")
+    thumbnail.write_bytes(b"x" * (jobs.THUMBNAIL_MAX_BYTES + 1))
+
+    try:
+        load_job(job_dir)
+    except Exception as exc:
+        assert "thumbnail_file is too large" in str(exc)
+    else:
+        raise AssertionError("load_job should reject large thumbnail")
+
+
+def test_discover_jobs_skips_future_upload_since(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "IN_DIR", tmp_path)
+
+    job_dir = tmp_path / "future"
+    video = job_dir / "video.mp4"
+
+    write_meta(
+        job_dir,
+        """
+# privacy
+private
+
+# video_file
+video.mp4
+
+# upload_since
+2999-01-01T00:00:00Z
+""",
+    )
+    video.write_bytes(b"fake video")
+
+    found = discover_jobs()
+
+    assert found == []
+
+
+def test_discover_jobs_moves_invalid_job_to_fail(tmp_path: Path, monkeypatch) -> None:
+    in_dir = tmp_path / "in"
+    fail_dir = tmp_path / "fail"
+
+    monkeypatch.setattr(jobs, "IN_DIR", in_dir)
+    monkeypatch.setattr(jobs, "FAIL_DIR", fail_dir)
+
+    job_dir = in_dir / "bad"
+    write_meta(
+        job_dir,
+        """
+# privacy
+private
+
+# video_file
+missing.mp4
+""",
+    )
+
+    found = discover_jobs()
+
+    assert found == []
+    assert not job_dir.exists()
+    assert (fail_dir / "bad").exists()
+    assert (fail_dir / "bad" / jobs.LOG_FILE).exists()
+
+
+def test_discover_jobs_sorts_by_priority_desc(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "IN_DIR", tmp_path)
+
+    for name, priority in (("low", 1), ("high", 10)):
+        directory = tmp_path / name
+        video = directory / "video.mp4"
+
+        write_meta(
+            directory,
+            f"""
+# privacy
+private
+
+# video_file
+video.mp4
+
+# priority
+{priority}
+""",
+        )
+        video.write_bytes(b"fake video")
+
+    found = discover_jobs()
+
+    assert [job.directory.name for job in found] == ["high", "low"]
