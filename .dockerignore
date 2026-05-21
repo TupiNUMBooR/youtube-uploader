@@ -13,7 +13,9 @@ htmlcov/
 # Project
 .env
 .auth/
-.workspace/
+in/
+out/
+fail/
 
 # Dev
 docs/

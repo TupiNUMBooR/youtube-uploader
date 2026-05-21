@@ -77,11 +77,18 @@ def process_one(job: UploadJob, config: Config, telegram: Telegram) -> bool:
         logger.write(f"attempt {job.state.attempts}/{config.max_upload_attempts} started")
 
         result = upload_video(job.to_upload_request(), logger)
-        mark_uploaded(job, result)
 
-        telegram.notify(upload_complete_message(job, result.url), logger)
+        logger.write(f"upload succeeded video_id={result.video_id} url={result.url}")
+
+        try:
+            telegram.notify(upload_complete_message(job, result.url), logger)
+        except Exception as exc:
+            logger.write(f"telegram complete notification failed: {type(exc).__name__}: {exc}")
 
         logger.write("upload job complete")
+
+        mark_uploaded(job)
+
         return True
 
     except Exception as exc:

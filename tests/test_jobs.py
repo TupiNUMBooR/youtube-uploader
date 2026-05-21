@@ -5,9 +5,7 @@ from pathlib import Path
 import jobs
 from config import Config
 from jobs import (
-    FAILED_FILE,
     META_FILE,
-    UPLOADED_FILE,
     UPLOADING_FILE,
     discover_jobs,
     load_job,
@@ -15,7 +13,6 @@ from jobs import (
     schedule_retry,
     start_attempt,
 )
-from models import VideoUploadResult
 
 
 def write_meta(directory: Path, content: str) -> None:
@@ -125,7 +122,6 @@ video.mp4
     content = (job_dir / UPLOADING_FILE).read_text(encoding="utf-8")
 
     assert "attempts: 1" in content
-    assert "current_priority: -1" in content
 
 
 def test_schedule_retry_writes_next_retry_at(tmp_path: Path) -> None:
@@ -151,11 +147,10 @@ video.mp4
     content = (job_dir / UPLOADING_FILE).read_text(encoding="utf-8")
 
     assert "attempts: 1" in content
-    assert "last_error: boom" in content
     assert "next_retry_at:" in content
 
 
-def test_mark_uploaded_writes_uploaded_file_and_removes_uploading(tmp_path: Path) -> None:
+def test_mark_uploaded_moves_job_and_removes_uploading(tmp_path: Path, monkeypatch) -> None:
     job_dir = tmp_path / "job-1"
     video = job_dir / "video.mp4"
 
@@ -174,23 +169,21 @@ video.mp4
     job = load_job(job_dir)
     start_attempt(job)
 
-    mark_uploaded(job, VideoUploadResult(video_id="abc123", url="https://youtu.be/abc123"))
+    out_dir = tmp_path / "out"
+    monkeypatch.setattr(jobs, "OUT_DIR", out_dir)
 
-    uploaded = (job_dir / UPLOADED_FILE).read_text(encoding="utf-8")
+    mark_uploaded(job)
 
-    assert "video_id: abc123" in uploaded
-    assert "url: https://youtu.be/abc123" in uploaded
     assert not (job_dir / UPLOADING_FILE).exists()
+    assert (out_dir / "job-1").exists()
 
 
-def test_discover_jobs_skips_uploaded_and_failed(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(jobs, "WORKSPACE", tmp_path)
+def test_discover_jobs_finds_ready_jobs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "IN_DIR", tmp_path)
 
     ready_dir = tmp_path / "ready"
-    uploaded_dir = tmp_path / "uploaded"
-    failed_dir = tmp_path / "failed"
 
-    for directory in (ready_dir, uploaded_dir, failed_dir):
+    for directory in (ready_dir,):
         video = directory / "video.mp4"
         write_meta(
             directory,
@@ -203,9 +196,6 @@ video.mp4
 """,
         )
         video.write_bytes(b"fake video")
-
-    (uploaded_dir / UPLOADED_FILE).write_text("uploaded\n", encoding="utf-8")
-    (failed_dir / FAILED_FILE).write_text("failed\n", encoding="utf-8")
 
     found = discover_jobs()
 

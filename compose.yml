@@ -13,7 +13,9 @@ services:
     #   TELEGRAM_CHAT_ID=
 
     volumes:
-      - ./.workspace:/workspace
+      - ./in:/in
+      - ./out:/out
+      - ./fail:/fail
       - ./.auth/token.json:/.auth/token.json
 
     # Obtain token.json from client_secret.json:

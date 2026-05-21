@@ -2,7 +2,7 @@
 
 ![](docs/image.jpg)
 
-Tiny Docker service that uploads prepared folders from `./.workspace` to YouTube.
+Tiny Docker service that uploads prepared folders from `./in` to YouTube.
 
 ![CI/CD](https://github.com/TupiNUMBooR/youtube-uploader/actions/workflows/ci-cd.yml/badge.svg)
 ![Latest Release](https://img.shields.io/github/release/TupiNUMBooR/youtube-uploader)
@@ -17,7 +17,7 @@ Another tool creates a folder with:
 * metadata
 * optional thumbnail
 
-`youtube-uploader` scans the workspace, uploads ready folders, writes result markers, and sends Telegram notifications.
+`youtube-uploader` scans /in, uploads ready folders, and sends Telegram notifications.
 
 ## Run
 
@@ -38,12 +38,14 @@ docker compose up -d --build
 
 ## Workspace
 
-Each upload candidate is one direct child folder inside `./.workspace`.
+Each upload candidate is one direct child folder inside `./in`.
 
 Example:
 
 ```text
-.workspace/
+in/
+out/
+fail/
   my-video/
     youtube-uploader.md
     video.mp4
