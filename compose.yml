@@ -16,7 +16,7 @@ services:
       - ./in:/in
       - ./out:/out
       - ./fail:/fail
-      - ./.auth/token.json:/.auth/token.json
+      - ./.auth:/.auth
 
     # Obtain token.json from client_secret.json:
-    #   docker compose run --rm -e PORT=4444 -p "4444:4444" -v "./.auth:/.auth" youtube-uploader python oauth.py
+    #   docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python oauth.py
