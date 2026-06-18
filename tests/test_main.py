@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import main
 from config import Config
@@ -28,41 +28,15 @@ def make_job(tmp_path: Path, attempts: int = 0) -> UploadJob:
     )
 
 
-def test_create_telegram() -> None:
-    config = Config(
-        telegram_bot_token="token",
-        telegram_chat_id="123",
-    )
-
-    telegram = main.create_telegram(config)
-
-    assert telegram.config.bot_token == "token"
-    assert telegram.config.chat_id == "123"
-
-
-def test_upload_started_message(tmp_path: Path) -> None:
-    job = make_job(tmp_path)
-
-    message = main.upload_started_message(job)
-
-    assert "YouTube upload started" in message
-    assert "folder: job-1" in message
-    assert "video: video.mp4" in message
-    assert "title: Test title" in message
-    assert "privacy: unlisted" in message
-    assert "priority: 10" in message
-
-
 def test_process_one_success(tmp_path: Path) -> None:
     job = make_job(tmp_path)
     config = Config()
-    telegram = MagicMock()
 
     with (
         patch.object(main, "upload_video", return_value=VideoUploadResult("abc123", "https://youtu.be/abc123")) as upload_mock,
         patch.object(main, "mark_uploaded") as mark_uploaded_mock,
     ):
-        result = main.process_one(job, config, telegram)
+        result = main.process_one(job, config)
 
     assert result is True
     assert job.state.attempts == 1
@@ -70,21 +44,22 @@ def test_process_one_success(tmp_path: Path) -> None:
     upload_mock.assert_called_once()
     mark_uploaded_mock.assert_called_once()
 
-    assert telegram.notify.call_count == 2
-    assert "youtube-uploader.log" in str(job.directory / main.LOG_FILE)
+    content = (job.directory / main.LOG_FILE).read_text(encoding="utf-8")
+    assert "attempt 1/20 started" in content
+    assert "upload succeeded video_id=abc123 url=https://youtu.be/abc123" in content
+    assert "upload job complete" in content
 
 
 def test_process_one_schedules_retry_on_failure(tmp_path: Path) -> None:
     job = make_job(tmp_path)
     config = Config(max_upload_attempts=3)
-    telegram = MagicMock()
 
     with (
         patch.object(main, "upload_video", side_effect=RuntimeError("boom")),
         patch.object(main, "schedule_retry") as schedule_retry_mock,
         patch.object(main, "mark_failed") as mark_failed_mock,
     ):
-        result = main.process_one(job, config, telegram)
+        result = main.process_one(job, config)
 
     assert result is False
     assert job.state.attempts == 1
@@ -93,20 +68,20 @@ def test_process_one_schedules_retry_on_failure(tmp_path: Path) -> None:
     schedule_retry_mock.assert_called_once()
     mark_failed_mock.assert_not_called()
 
-    assert telegram.notify.call_count == 2
+    content = (job.directory / main.LOG_FILE).read_text(encoding="utf-8")
+    assert "attempt 1/3 failed: RuntimeError: boom" in content
 
 
 def test_process_one_marks_failed_after_last_attempt(tmp_path: Path) -> None:
     job = make_job(tmp_path, attempts=2)
     config = Config(max_upload_attempts=3)
-    telegram = MagicMock()
 
     with (
         patch.object(main, "upload_video", side_effect=RuntimeError("boom")),
         patch.object(main, "schedule_retry") as schedule_retry_mock,
         patch.object(main, "mark_failed") as mark_failed_mock,
     ):
-        result = main.process_one(job, config, telegram)
+        result = main.process_one(job, config)
 
     assert result is False
     assert job.state.attempts == 3
@@ -115,7 +90,8 @@ def test_process_one_marks_failed_after_last_attempt(tmp_path: Path) -> None:
     mark_failed_mock.assert_called_once()
     schedule_retry_mock.assert_not_called()
 
-    assert telegram.notify.call_count == 2
+    content = (job.directory / main.LOG_FILE).read_text(encoding="utf-8")
+    assert "attempt 3/3 failed: RuntimeError: boom" in content
 
 
 def test_request_stop_sets_stop_event() -> None:
@@ -143,13 +119,11 @@ def test_main_one_empty_loop() -> None:
             self.wait_calls = 1
 
     fake_stop_event = StopAfterOneWait()
-    telegram = MagicMock()
 
     with (
         patch.object(main.signal, "signal"),
         patch.object(main, "stop_event", fake_stop_event),
         patch.object(main, "Config", return_value=Config(poll_seconds=1)),
-        patch.object(main, "create_telegram", return_value=telegram),
         patch.object(main, "validate_token") as validate_token_mock,
         patch.object(main, "discover_jobs", return_value=[]) as discover_jobs_mock,
         patch.object(main, "process_one") as process_one_mock,
@@ -161,5 +135,3 @@ def test_main_one_empty_loop() -> None:
     validate_token_mock.assert_called_once()
     discover_jobs_mock.assert_called_once()
     process_one_mock.assert_not_called()
-
-    assert telegram.notify.call_count == 2

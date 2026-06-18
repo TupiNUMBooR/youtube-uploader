@@ -22,5 +22,3 @@ class Config:
     max_upload_attempts: int = env_int("MAX_UPLOAD_ATTEMPTS", 20)
     retry_base_seconds: int = env_int("RETRY_BASE_SECONDS", 60)
     retry_max_seconds: int = env_int("RETRY_MAX_SECONDS", 3600)
-    telegram_bot_token: str = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    telegram_chat_id: str = os.environ.get("TELEGRAM_CHAT_ID", "").strip()

@@ -5,13 +5,6 @@ services:
     build: .
     restart: unless-stopped
 
-    env_file:
-      - .env
-
-    # .env:
-    #   TELEGRAM_BOT_TOKEN=
-    #   TELEGRAM_CHAT_ID=
-
     volumes:
       - ./in:/in
       - ./out:/out

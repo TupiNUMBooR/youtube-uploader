@@ -7,6 +7,5 @@ def test_imports() -> None:
     import logger
     import main
     import models
-    import telegram
     import time_utils
     import youtube_api

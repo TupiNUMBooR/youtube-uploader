@@ -17,16 +17,9 @@ Another tool creates a folder with:
 * metadata
 * optional thumbnail
 
-`youtube-uploader` scans /in, uploads ready folders, and sends Telegram notifications.
+`youtube-uploader` scans /in and uploads ready folders.
 
 ## Run
-
-`.env`
-
-```env
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-```
 
 Put `token.json` in `.auth/` (see below).
 
@@ -189,21 +182,6 @@ Retries use exponential backoff:
 ```
 
 Failed uploads automatically lose priority over time.
-
-## Telegram
-
-The uploader sends Telegram notifications for:
-
-* startup
-* shutdown
-* upload started
-* retry scheduled
-* upload complete
-* upload failed
-* main loop errors
-
-Telegram is optional.
-Uploads still work if Telegram variables are empty.
 
 ## OAuth
 
