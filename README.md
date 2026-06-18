@@ -1,6 +1,6 @@
 # youtube-uploader
 
-![](docs/preview-2.jpg)
+![](docs/preview-3.jpg)
 
 Tiny Docker service that uploads prepared folders from `./in` to YouTube.
 
