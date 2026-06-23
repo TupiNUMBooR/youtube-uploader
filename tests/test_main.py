@@ -46,7 +46,6 @@ def test_process_one_success(tmp_path: Path) -> None:
 
     content = (job.directory / main.LOG_FILE).read_text(encoding="utf-8")
     assert "attempt 1/20 started" in content
-    assert "upload succeeded video_id=abc123 url=https://youtu.be/abc123" in content
     assert "upload job complete" in content
 
 

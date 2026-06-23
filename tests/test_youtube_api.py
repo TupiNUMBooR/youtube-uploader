@@ -106,7 +106,14 @@ def test_upload_video_without_thumbnail(tmp_path) -> None:
 
     log = (tmp_path / "test.log").read_text(encoding="utf-8")
     assert "uploading video: video.mp4" in log
-    assert "video uploaded: https://youtu.be/abc123" in log
+    assert "title='Test title'" in log
+    assert "privacy=unlisted" in log
+
+    assert (
+        "video uploaded: https://youtu.be/abc123; "
+        "title='Test title'; "
+        "privacy=unlisted"
+    ) in log
 
 
 def test_upload_video_with_thumbnail(tmp_path) -> None:
