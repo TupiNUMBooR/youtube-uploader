@@ -71,7 +71,11 @@ def upload_video(request: VideoUploadRequest, logger: Logger) -> VideoUploadResu
 
     video_id = response["id"]
     url = f"https://youtu.be/{video_id}"
-    logger.write(f"video uploaded: {url}")
+    logger.write(
+        f"video uploaded: {url}; "
+        f"title={request.title!r}; "
+        f"privacy={status['privacyStatus']}"
+    )
 
     if request.thumbnail_file:
         try:

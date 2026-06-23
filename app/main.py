@@ -28,7 +28,6 @@ def process_one(job: UploadJob, config: Config) -> bool:
 
         result = upload_video(job.to_upload_request(), logger)
 
-        logger.write(f"upload succeeded video_id={result.video_id} url={result.url}")
         logger.write("upload job complete")
 
         mark_uploaded(job)
