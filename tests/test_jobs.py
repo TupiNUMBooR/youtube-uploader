@@ -257,12 +257,46 @@ video.mp4
     assert found == []
 
 
+def test_discover_jobs_retries_validation_for_non_atomic_move(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "IN_DIR", tmp_path)
+
+    sleep_calls: list[int] = []
+    job_dir = tmp_path / "late-video"
+    video = job_dir / "video.mp4"
+
+    write_meta(
+        job_dir,
+        """
+# privacy
+private
+
+# video_file
+video.mp4
+""",
+    )
+
+    def fake_sleep(seconds: int) -> None:
+        sleep_calls.append(seconds)
+        if seconds == 1:
+            video.write_bytes(b"fake video")
+
+    monkeypatch.setattr(jobs.time, "sleep", fake_sleep)
+
+    found = discover_jobs()
+
+    assert [job.directory.name for job in found] == ["late-video"]
+    assert sleep_calls == [1]
+    assert job_dir.exists()
+
+
 def test_discover_jobs_moves_invalid_job_to_fail(tmp_path: Path, monkeypatch) -> None:
     in_dir = tmp_path / "in"
     fail_dir = tmp_path / "fail"
+    sleep_calls: list[int] = []
 
     monkeypatch.setattr(jobs, "IN_DIR", in_dir)
     monkeypatch.setattr(jobs, "FAIL_DIR", fail_dir)
+    monkeypatch.setattr(jobs.time, "sleep", lambda seconds: sleep_calls.append(seconds))
 
     job_dir = in_dir / "bad"
     write_meta(
@@ -279,6 +313,7 @@ missing.mp4
     found = discover_jobs()
 
     assert found == []
+    assert sleep_calls == [1, 2, 4, 8]
     assert not job_dir.exists()
     assert (fail_dir / "bad").exists()
     assert (fail_dir / "bad" / jobs.LOG_FILE).exists()

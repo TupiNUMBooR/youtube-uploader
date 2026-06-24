@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,6 +20,7 @@ LOG_FILE = 'youtube-uploader.log'
 
 PRIVACY_VALUES = {'private', 'unlisted', 'public'}
 THUMBNAIL_MAX_BYTES = 2_097_152
+VALIDATION_RETRY_DELAYS_SECONDS = (1, 2, 4, 8)
 
 
 class JobError(Exception):
@@ -129,6 +131,27 @@ def mark_validation_failed(directory: Path, message: str) -> None:
     move_job(directory, FAIL_DIR)
 
 
+def load_job_with_validation_retries(directory: Path) -> UploadJob:
+    logger = Logger(directory / LOG_FILE)
+    last_error: Exception | None = None
+
+    for delay_seconds in (None, *VALIDATION_RETRY_DELAYS_SECONDS):
+        if delay_seconds is not None:
+            logger.write(f'validation retry waiting {delay_seconds}s')
+            time.sleep(delay_seconds)
+
+        try:
+            return load_job(directory)
+        except Exception as exc:
+            last_error = exc
+            logger.write(f'validation attempt failed: {exc}')
+
+    if last_error is not None:
+        raise last_error
+
+    raise JobError('validation failed')
+
+
 def discover_jobs() -> list[UploadJob]:
     jobs: list[UploadJob] = []
     now = utc_now()
@@ -137,7 +160,7 @@ def discover_jobs() -> list[UploadJob]:
         if not (directory / META_FILE).exists():
             continue
         try:
-            job = load_job(directory)
+            job = load_job_with_validation_retries(directory)
         except Exception as exc:
             mark_validation_failed(directory, str(exc))
             continue
