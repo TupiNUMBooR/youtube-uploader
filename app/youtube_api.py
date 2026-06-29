@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,10 +11,30 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 from logger import Logger
-from models import VideoUploadRequest, VideoUploadResult
+from time_utils import iso_utc
 
 TOKEN_FILE = Path("/.auth/token.json")
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+
+@dataclass(frozen=True)
+class VideoUploadRequest:
+    video_file: Path
+    thumbnail_file: Path | None
+    title: str
+    description: str
+    privacy: str
+    publish_at: datetime | None
+
+    @property
+    def publish_at_iso(self) -> str | None:
+        return iso_utc(self.publish_at) if self.publish_at else None
+
+
+@dataclass(frozen=True)
+class VideoUploadResult:
+    video_id: str
+    url: str
 
 
 def validate_token(logger: Logger) -> None:

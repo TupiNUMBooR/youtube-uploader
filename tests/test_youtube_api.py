@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import youtube_api
 from logger import Logger
-from models import VideoUploadRequest
 from time_utils import parse_iso_utc
+from youtube_api import VideoUploadRequest
 
 
 def make_request(tmp_path, thumbnail: bool = False) -> VideoUploadRequest:

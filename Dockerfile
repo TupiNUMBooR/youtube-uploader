@@ -13,4 +13,4 @@ COPY app/ /app/
 
 RUN python -m compileall -q /app
 
-CMD ["python3", "/app/main.py"]
+CMD ["python3", "/app/main.py", "/job"]

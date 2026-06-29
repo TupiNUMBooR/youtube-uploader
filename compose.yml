@@ -6,9 +6,7 @@ services:
     restart: unless-stopped
 
     volumes:
-      - ./in:/in
-      - ./out:/out
-      - ./fail:/fail
+      - ./job:/job
       - ./.auth:/.auth
 
     # Obtain token.json from client_secret.json:
