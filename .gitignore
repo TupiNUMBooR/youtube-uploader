@@ -1,4 +1,10 @@
-# Python
+## IDE
+.vscode/
+.idea/
+.agents/
+.codex/
+
+## Python
 __pycache__/
 *.py[cod]
 .venv/
@@ -6,13 +12,9 @@ __pycache__/
 .coverage
 htmlcov/
 
-# IDE
-.vscode/
-.idea/
-
-# Project
-.env
+## Runtime
 .auth
-in/
-out/
-fail/
+dev/
+
+## User files
+*.zip
