@@ -1,27 +1,19 @@
 from __future__ import annotations
 
-from pathlib import Path
+import sys
 
 from time_utils import iso_utc
 
+SERVICE_NAME = "youtube-uploader"
 
-class Logger:
-    def __init__(self, path: Path | None = None) -> None:
-        self.path = path
 
-    def write(self, message: str) -> None:
-        line = f"[{iso_utc()}] {message}"
-        print(line, flush=True)
+def log(message: str) -> None:
+    print(f"[{iso_utc()}] [{SERVICE_NAME}] {message}", file=sys.stderr, flush=True)
 
-        if self.path is None:
-            return
 
-        with self.path.open("a", encoding="utf-8") as f:
-            f.write(line + "\n")
+def warn(message: str) -> None:
+    log(f"[WARN] {message}")
 
-    def tail(self, lines: int = 10) -> str:
-        if self.path is None or not self.path.exists():
-            return ""
 
-        content = self.path.read_text(encoding="utf-8", errors="replace").splitlines()
-        return "\n".join(content[-lines:])
+def error(message: str) -> None:
+    log(f"[ERROR] {message}")

@@ -13,4 +13,5 @@ COPY app/ /app/
 
 RUN python -m compileall -q /app
 
-CMD ["python3", "/app/main.py", "/job"]
+EXPOSE 8080
+CMD ["python3", "/app/main.py"]

@@ -14,7 +14,6 @@ htmlcov/
 
 ## Runtime
 .auth
-dev/
 
 ## User files
-*.zip
+user/
