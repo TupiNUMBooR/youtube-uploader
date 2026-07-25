@@ -1,11 +1,9 @@
-name: youtube-uploader-dev
-
 services:
   youtube-uploader:
-    image: youtube-uploader:dev
-    build: .
+    image: ghcr.io/tupinumboor/youtube-uploader
 
     volumes:
+      - ./job:/job
       - ./.auth:/.auth
 
     # Obtain token.json from client_secret.json:
