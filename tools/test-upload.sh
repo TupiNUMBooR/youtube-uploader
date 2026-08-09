@@ -8,8 +8,38 @@ log() {
     printf '[%(%H:%M:%S)T] %s\n' -1 "$*" >&2
 }
 
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") CHANNEL
+
+Generate a 10-second white-noise test video and thumbnail, then upload them
+as an unlisted video through youtube-uploader.
+
+Arguments:
+  CHANNEL       YouTube channel handle starting with @ (for example, @mychannel)
+
+Environment:
+  SERVER_URL    Uploader service URL (default: http://localhost:8080)
+
+Generated files:
+  user/test/video.mp4
+  user/test/thumbnail.jpg
+
+Options:
+  -h, --help    Show this help
+
+Example:
+  $(basename "$0") @mychannel
+EOF
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+    usage
+    exit 0
+fi
+
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 @channel" >&2
+    usage >&2
     exit 2
 fi
 
