@@ -28,7 +28,7 @@ ENV VERSION=${VERSION?}
 WORKDIR /app
 
 COPY --from=test /project/app/ /app/
-COPY compose.yml Dockerfile README.md requirements.txt /app/meta/
+COPY compose*.yml Dockerfile README.md requirements.txt /app/meta/
 COPY docs/ /app/meta/docs/
 
 EXPOSE 8080
