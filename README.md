@@ -148,7 +148,7 @@ Authorize in the browser. The script detects the authorized channel handle and c
 
 ```text
 https://www.googleapis.com/auth/youtube.upload
-https://www.googleapis.com/auth/youtube.force-ssl
+https://www.googleapis.com/auth/youtube.readonly
 ```
 
 * Add yourself as a test user
