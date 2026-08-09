@@ -22,6 +22,14 @@ docker compose up -d --build
 
 The API listens on `http://localhost:8080`.
 
+## Test
+
+Build the Docker test stage and print the complete test and coverage log:
+
+```console
+docker build --target test --progress=plain .
+```
+
 ## Channels
 
 OAuth files are stored in `.auth/`, one file per YouTube channel:
