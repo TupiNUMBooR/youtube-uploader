@@ -137,3 +137,28 @@ def test_upload_video_sets_optional_thumbnail(tmp_path: Path) -> None:
 
     youtube.thumbnails.return_value.set.assert_called_once()
     youtube.thumbnails.return_value.set.return_value.execute.assert_called_once()
+
+
+def test_thumbnail_failure_warns_three_times_and_keeps_video_uploaded(tmp_path: Path) -> None:
+    request = make_request(tmp_path, thumbnail=True)
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value.next_chunk.return_value = (None, {"id": "abc123"})
+    thumbnail_execute = youtube.thumbnails.return_value.set.return_value.execute
+    thumbnail_execute.side_effect = RuntimeError("thumbnail unavailable")
+
+    with (
+        patch.object(youtube_api, "build_youtube", return_value=youtube),
+        patch.object(youtube_api, "MediaFileUpload"),
+        patch.object(youtube_api, "warn") as warn_mock,
+        patch.object(youtube_api.time, "sleep"),
+    ):
+        result = youtube_api.upload_video("@test", request)
+
+    assert result.video_id == "abc123"
+    assert thumbnail_execute.call_count == 3
+    assert warn_mock.call_count == 3
+    assert [call.args[0] for call in warn_mock.call_args_list] == [
+        "thumbnail failed attempt=1/3: RuntimeError: thumbnail unavailable",
+        "thumbnail failed attempt=2/3: RuntimeError: thumbnail unavailable",
+        "thumbnail failed attempt=3/3: RuntimeError: thumbnail unavailable",
+    ]

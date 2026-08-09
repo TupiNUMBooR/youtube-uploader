@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable
 
 import httplib2
 from google.auth.exceptions import TransportError
@@ -196,24 +196,20 @@ def _is_retryable(exc: Exception) -> bool:
     return isinstance(exc, (TransportError, httplib2.HttpLib2Error, OSError, TimeoutError))
 
 
-T = TypeVar("T")
-
-
-def _with_retries(operation: str, call: Callable[[], T]) -> T:
-    for attempt in range(1, MAX_UPLOAD_ATTEMPTS + 1):
+def _set_thumbnail_with_retries(call: Callable[[], Any]) -> bool:
+    attempts = 3
+    for attempt in range(1, attempts + 1):
         try:
-            return call()
+            call()
+            return True
         except Exception as exc:
-            if not _is_retryable(exc) or attempt >= MAX_UPLOAD_ATTEMPTS:
-                raise
-            delay = _retry_delay(attempt)
             warn(
-                f"{operation} retry={attempt}/{MAX_UPLOAD_ATTEMPTS} "
-                f"reason={type(exc).__name__} delay={delay:.1f}s"
+                f"thumbnail failed attempt={attempt}/{attempts}: "
+                f"{type(exc).__name__}: {exc}"
             )
-            time.sleep(delay)
-
-    raise RuntimeError("unreachable retry state")
+            if attempt < attempts:
+                time.sleep(_retry_delay(attempt))
+    return False
 
 
 def _execute_resumable(request: Any) -> dict[str, Any]:
@@ -261,15 +257,12 @@ def upload_video(handle: str, request: VideoUploadRequest) -> VideoUploadResult:
     log(f"video uploaded channel={handle} video_id={video_id} url={url}")
 
     if request.thumbnail_file:
-        try:
-            log(f"set thumbnail channel={handle} file={request.thumbnail_file.name}")
-            thumbnail_request = youtube.thumbnails().set(
-                videoId=video_id,
-                media_body=MediaFileUpload(str(request.thumbnail_file)),
-            )
-            _with_retries("thumbnail", thumbnail_request.execute)
+        log(f"set thumbnail channel={handle} file={request.thumbnail_file.name}")
+        thumbnail_request = youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=MediaFileUpload(str(request.thumbnail_file)),
+        )
+        if _set_thumbnail_with_retries(thumbnail_request.execute):
             log(f"thumbnail set channel={handle} video_id={video_id}")
-        except Exception as exc:
-            warn(f"thumbnail failed; video stays uploaded: {type(exc).__name__}: {exc}")
 
     return VideoUploadResult(video_id=video_id, url=url, shorts_url=shorts_url)
