@@ -76,3 +76,21 @@ def test_post_upload_rejects_unknown_channel_before_saving_video() -> None:
 
     assert response.status_code == 404
     save_mock.assert_not_called()
+
+
+def test_post_upload_rejects_video_over_size_limit(monkeypatch) -> None:
+    metadata = {"channel": "@test", "privacy": "private"}
+    monkeypatch.setattr(server, "MAX_VIDEO_BYTES", 4)
+
+    with patch.object(server, "token_for_channel"):
+        response = client.post(
+            "/uploads",
+            data={"metadata": json.dumps(metadata)},
+            files={"video": ("video.mp4", b"video", "video/mp4")},
+        )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "error": "file_too_large",
+        "message": "file exceeds 4 bytes",
+    }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from youtube_api import (
 )
 
 THUMBNAIL_MAX_BYTES = 2_097_152
+MAX_VIDEO_BYTES = int(os.environ.get("MAX_VIDEO_BYTES", "10737418240"))
 PRIVACY_VALUES = {"private", "unlisted", "public"}
 
 app = FastAPI(title="youtube-uploader", docs_url=None, redoc_url=None)
@@ -119,7 +121,7 @@ def create_upload(
         with tempfile.TemporaryDirectory(prefix="youtube-uploader-") as temp_dir_raw:
             temp_dir = Path(temp_dir_raw)
             video_path = temp_dir / f"video{suffix}"
-            video_bytes = save_upload(video, video_path)
+            video_bytes = save_upload(video, video_path, MAX_VIDEO_BYTES)
 
             thumbnail_path = None
             thumbnail_bytes = 0

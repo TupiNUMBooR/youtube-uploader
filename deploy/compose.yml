@@ -2,6 +2,9 @@ services:
   youtube-uploader:
     image: ghcr.io/tupinumboor/youtube-uploader
 
+    environment:
+      MAX_VIDEO_BYTES: "10737418240" # 10 GiB
+
     expose:
       - "8080"
 

@@ -100,6 +100,12 @@ RETRY_MAX_SECONDS=30
 
 Backoff uses exponential growth with random jitter.
 
+The maximum accepted video size defaults to 10 GiB and can be configured in bytes:
+
+```env
+MAX_VIDEO_BYTES=10737418240
+```
+
 ## Auth
 
 ### Creating `token.@channel.json`

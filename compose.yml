@@ -5,6 +5,9 @@ services:
     image: youtube-uploader:dev
     build: .
 
+    environment:
+      MAX_VIDEO_BYTES: "1073741824" # 1 GiB
+
     ports:
       - "127.0.0.1:8080:8080"
 
