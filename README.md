@@ -2,7 +2,7 @@
 
 ![](docs/preview-3.jpg)
 
-Tiny Docker service that uploads prepared folders from `./in` to YouTube.
+Small HTTP service for uploading videos to one or more YouTube channels.
 
 ![CI/CD](https://github.com/TupiNUMBooR/youtube-uploader/actions/workflows/ci-cd.yml/badge.svg)
 ![Latest Release](https://img.shields.io/github/release/TupiNUMBooR/youtube-uploader)
@@ -11,205 +11,105 @@ Tiny Docker service that uploads prepared folders from `./in` to YouTube.
 ![Top Lang](https://img.shields.io/github/languages/top/TupiNUMBooR/youtube-uploader?logo=python)
 ![Docker](https://img.shields.io/badge/docker-ghcr-blue?logo=docker)
 
-Another tool creates a folder with:
-
-* video
-* metadata
-* optional thumbnail
-
-`youtube-uploader` scans /in and uploads ready folders.
-
 ## Run
 
-Put `token.json` in `.auth/` (see below).
-
-Start:
+Create a token for at least one channel as described below, then start the service:
 
 ```bash
 docker compose up -d --build
 ```
 
-## Workspace
+The API listens on `http://localhost:8080`.
 
-Each upload candidate is one direct child folder inside `./in`.
+## Channels
+
+OAuth files are stored in `.auth/`, one file per YouTube channel:
+
+```text
+.auth/
+  client_secret.json
+  token.@first-channel.json
+  token.@second-channel.json
+```
+
+The channel handle in an upload request selects the corresponding token file.
+
+Check whether a channel is configured:
+
+```bash
+curl http://localhost:8080/channels/@first-channel
+```
+
+Successful response:
+
+```json
+{"handle":"@first-channel"}
+```
+
+## Upload
+
+Send a `multipart/form-data` request to `POST /uploads` with:
+
+| Field       | Required | Content                        |
+| ----------- | -------- | ------------------------------ |
+| `metadata`  | yes      | JSON object described below.   |
+| `video`     | yes      | Video file.                    |
+| `thumbnail` | no       | Thumbnail file, at most 2 MiB. |
 
 Example:
 
-```text
-in/
-out/
-fail/
-  my-video/
-    youtube-uploader.md
-    video.mp4
-    thumbnail.png
+```bash
+curl -X POST http://localhost:8080/uploads \
+  -F 'metadata={"channel":"@first-channel","title":"My video","description":"Uploaded by youtube-uploader","privacy":"unlisted"}' \
+  -F 'video=@video.mp4' \
+  -F 'thumbnail=@thumbnail.jpg'
 ```
 
-The uploader ignores folders containing:
+Metadata fields:
 
-* `youtube-uploader-uploaded.txt`
-* `youtube-uploader-failed.txt`
+| Field         | Required | Meaning                                                                    |
+| ------------- | -------- | -------------------------------------------------------------------------- |
+| `channel`     | yes      | YouTube handle beginning with `@`.                                         |
+| `title`       | no       | Video title. Defaults to the uploaded filename without its extension.      |
+| `description` | no       | Video description. Defaults to an empty string.                            |
+| `privacy`     | yes      | `private`, `unlisted`, or `public`.                                        |
+| `publish_at`  | no       | UTC time such as `2026-05-10T08:00:00Z`; scheduled uploads become private. |
 
-## youtube-uploader.md
+Successful response:
 
-The metadata file is the source of truth.
-
-Example:
-
-```md
-# title
-My Cool Video
-
-# description
-Very atmospheric thing.
-
-Made with strange machines
-in the middle of the night.
-
-# privacy
-private
-
-# upload_since
-2026-05-10T00:00:00Z
-
-# publish_at
-2026-05-10T08:00:00Z
-
-# priority
-10
-
-# video_file
-video.mp4
-
-# thumbnail_file
-thumbnail.png
+```json
+{
+  "video_id": "abc123",
+  "url": "https://youtu.be/abc123",
+  "shorts_url": "https://www.youtube.com/shorts/abc123"
+}
 ```
 
-Minimal file:
-
-```md
-# video_file
-video.mp4
-
-# privacy
-private
-```
-
-Supported sections:
-
-| Section          | Required | Meaning                                                                     |
-| ---------------- | -------- | --------------------------------------------------------------------------- |
-| `title`          | no       | YouTube title. Defaults to video filename without extension.                |
-| `description`    | no       | YouTube description. Multiline supported.                                   |
-| `privacy`        | yes      | `private`, `unlisted`, or `public`.                                         |
-| `upload_since`   | no       | Do not upload before this UTC timestamp.                                    |
-| `publish_at`     | no       | Scheduled YouTube publish time. Upload is sent as private with `publishAt`. |
-| `priority`       | no       | Higher value uploads first. Default: `0`.                                   |
-| `video_file`     | yes      | Video filename inside the same folder.                                      |
-| `thumbnail_file` | no       | Thumbnail filename inside the same folder.                                  |
-
-Timestamp format:
-
-```text
-2026-05-10T08:00:00Z
-```
-
-Why .md, you may ask? Because it's human-friendly readable and editable.
-Imagine fixing yaml indentation or json quotes by an average user.
-
-## Upload state
-
-During retries:
-
-```text
-youtube-uploader-uploading.txt
-```
-
-After success:
-
-```text
-youtube-uploader-uploaded.txt
-youtube-uploader.log
-```
-
-Example:
-
-```text
-uploaded_at: 2026-05-09T12:00:00Z
-video_id: abc123
-url: https://youtu.be/abc123
-privacy: private
-publish_at: 2026-05-10T08:00:00Z
-```
-
-After permanent failure:
-
-```text
-youtube-uploader-failed.txt
-youtube-uploader.log
-```
-
-Example:
-
-```text
-failed_at: 2026-05-09T12:00:00Z
-stage: upload
-attempts: 20
-message: HttpError: ...
-last_log_lines:
-...
-```
+Errors use a JSON body with an `error` code and a human-readable `message`.
 
 ## Retry behavior
 
-Environment variables:
+YouTube requests retry temporary transport errors and HTTP `429`, `500`, `502`, `503`, and `504` responses. Configure retries with:
 
 ```env
-POLL_SECONDS=5
-MAX_UPLOAD_ATTEMPTS=20
-RETRY_BASE_SECONDS=60
-RETRY_MAX_SECONDS=3600
+MAX_UPLOAD_ATTEMPTS=5
+RETRY_BASE_SECONDS=1
+RETRY_MAX_SECONDS=30
 ```
 
-Retries use exponential backoff:
+Backoff uses exponential growth with random jitter.
 
-```text
-60s
-120s
-240s
-480s
-...
-```
+## Auth
 
-Failed uploads automatically lose priority over time.
+### Creating `token.@channel.json`
 
-# OAuth
-
-To upload videos, you need to obtain an OAuth token.
-
-Expected token location inside container:
-
-```text
-/.auth/token.@channel.json
-```
-
-## Getting token.@channel.json
-
-To obtain the token, you need to have `client_secret.json` in `.auth/`.
-
-Run:
+After `client_secret.json` is ready, run:
 
 ```sh
 docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python oauth.py
 ```
 
-Authorize in browser.
-
-Token will be saved to:
-
-```text
-.auth/token.@channel.json
-```
+Authorize in the browser. The script detects the authorized channel handle and creates the matching token file in `.auth/`.
 
 ## Getting `client_secret.json`
 
@@ -253,7 +153,7 @@ https://www.googleapis.com/auth/youtube.force-ssl
 * Add yourself as a test user
   [https://console.cloud.google.com/auth/audience](https://console.cloud.google.com/auth/audience)
 
-## Release
+### Release
 
 Git tag:
 
