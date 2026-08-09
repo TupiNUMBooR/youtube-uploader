@@ -20,8 +20,8 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from filelock import FileLock
 
-from logger import log, warn
-from time_utils import iso_utc
+from youtube_uploader.logger import log, warn
+from youtube_uploader.time_utils import iso_utc
 
 AUTH_DIR = Path("/.auth")
 TOKEN_PATTERN = re.compile(r"^token\.(@[A-Za-z0-9._-]+)\.json$")

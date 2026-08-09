@@ -113,7 +113,7 @@ MAX_VIDEO_BYTES=10737418240
 After `client_secret.json` is ready, run:
 
 ```sh
-docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python oauth.py
+docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python -m youtube_uploader.oauth
 ```
 
 Authorize in the browser. The script detects the authorized channel handle and creates the matching token file in `.auth/`.

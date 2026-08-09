@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import main
+from youtube_uploader import main
 
 
 def test_main_validates_tokens_and_starts_server() -> None:
@@ -15,7 +15,7 @@ def test_main_validates_tokens_and_starts_server() -> None:
     assert result == 0
     discover_mock.assert_called_once_with()
     run_mock.assert_called_once_with(
-        "server:app",
+        "youtube_uploader.server:app",
         host="0.0.0.0",
         port=8080,
         access_log=False,

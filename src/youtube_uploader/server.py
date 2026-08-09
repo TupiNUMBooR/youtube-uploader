@@ -13,9 +13,9 @@ from google.auth.exceptions import RefreshError, TransportError
 from googleapiclient.errors import HttpError
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
-from logger import error, log
-from time_utils import parse_iso_utc
-from youtube_api import (
+from youtube_uploader.logger import error, log
+from youtube_uploader.time_utils import parse_iso_utc
+from youtube_uploader.youtube_api import (
     TokenError,
     VideoUploadRequest,
     discover_tokens,

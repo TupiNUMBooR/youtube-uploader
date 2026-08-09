@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-import server
-from youtube_api import ChannelToken, VideoUploadResult
+from youtube_uploader import server
+from youtube_uploader.youtube_api import ChannelToken, VideoUploadResult
 
 client = TestClient(server.app)
 

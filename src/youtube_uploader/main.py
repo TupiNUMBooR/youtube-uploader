@@ -5,8 +5,8 @@ import os
 
 import uvicorn
 
-from logger import error, log
-from youtube_api import TokenError, discover_tokens
+from youtube_uploader.logger import error, log
+from youtube_uploader.youtube_api import TokenError, discover_tokens
 
 VERSION = os.environ.get("VERSION", "dev").strip() or "dev"
 HOST = "0.0.0.0"
@@ -18,7 +18,7 @@ def main() -> int:
         tokens = discover_tokens()
         log(f"youtube-uploader v{VERSION} channels={len(tokens)}")
         uvicorn.run(
-            "server:app",
+            "youtube_uploader.server:app",
             host=HOST,
             port=PORT,
             access_log=False,

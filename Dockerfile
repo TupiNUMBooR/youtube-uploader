@@ -9,15 +9,16 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 FROM base AS test
 
 ENV VERSION=test
-WORKDIR /project
+ENV PYTHONPATH=/app/src
+WORKDIR /app
 
 COPY requirements-dev.txt /tmp/requirements-dev.txt
 RUN pip install --no-cache-dir -r /tmp/requirements-dev.txt
 
-COPY app/ app/
+COPY src/ src/
 COPY tests/ tests/
 
-RUN python -m compileall -q app tests
+RUN python -m compileall -q src tests
 RUN coverage run -m pytest -q && coverage report
 
 
@@ -27,9 +28,9 @@ ARG VERSION=dev
 ENV VERSION=${VERSION?}
 WORKDIR /app
 
-COPY --from=test /project/app/ /app/
+COPY --from=test /app/src/ /app/
 COPY compose*.yml Dockerfile README.md requirements.txt /app/meta/
 COPY docs/ /app/meta/docs/
 
 EXPOSE 8080
-CMD ["python3", "/app/main.py"]
+CMD ["python3", "-m", "youtube_uploader.main"]

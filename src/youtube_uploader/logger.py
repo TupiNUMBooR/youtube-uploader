@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from time_utils import iso_utc
+from youtube_uploader.time_utils import iso_utc
 
 SERVICE_NAME = "youtube-uploader"
 

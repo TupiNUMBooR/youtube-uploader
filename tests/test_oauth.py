@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import oauth
+from youtube_uploader import oauth
 
 
 def test_create_token_uses_detected_handle(tmp_path: Path, monkeypatch) -> None:

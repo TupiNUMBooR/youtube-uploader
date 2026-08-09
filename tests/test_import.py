@@ -2,9 +2,9 @@ from __future__ import annotations
 
 
 def test_imports() -> None:
-    import logger
-    import main
-    import oauth
-    import server
-    import time_utils
-    import youtube_api
+    import youtube_uploader.logger
+    import youtube_uploader.main
+    import youtube_uploader.oauth
+    import youtube_uploader.server
+    import youtube_uploader.time_utils
+    import youtube_uploader.youtube_api

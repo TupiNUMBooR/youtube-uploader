@@ -26,7 +26,7 @@ jobs:
 
       - run: pip install -r requirements-dev.txt
 
-      - run: python -m compileall -q app tests
+      - run: python -m compileall -q src tests
       - run: pytest -q
 
   docker:

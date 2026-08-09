@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timezone
 
-from time_utils import iso_utc, parse_iso_utc
+from youtube_uploader.time_utils import iso_utc, parse_iso_utc
 
 
 def test_parse_iso_utc_z_suffix() -> None:

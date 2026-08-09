@@ -1,0 +1,1 @@
+"""YouTube uploader HTTP service."""

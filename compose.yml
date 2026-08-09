@@ -15,4 +15,4 @@ services:
       - ./.auth:/.auth
 
     # Obtain token.@channel.json from client_secret.json:
-    #   docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python oauth.py
+    #   docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python -m youtube_uploader.oauth

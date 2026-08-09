@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import youtube_api
-from time_utils import parse_iso_utc
-from youtube_api import VideoUploadRequest
+from youtube_uploader import youtube_api
+from youtube_uploader.time_utils import parse_iso_utc
+from youtube_uploader.youtube_api import VideoUploadRequest
 
 
 def token_payload() -> dict[str, object]:
