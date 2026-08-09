@@ -5,6 +5,9 @@ services:
     image: youtube-uploader:dev
     build: .
 
+    ports:
+      - "8080:8080"
+
     volumes:
       - ./.auth:/.auth
 
