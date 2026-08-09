@@ -183,23 +183,35 @@ Retries use exponential backoff:
 
 Failed uploads automatically lose priority over time.
 
-## OAuth
+# OAuth
+
+To upload videos, you need to obtain an OAuth token.
 
 Expected token location inside container:
 
 ```text
-/.auth/token.json
+/.auth/token.@channel.json
 ```
 
-Mounted from:
+## Getting token.@channel.json
+
+To obtain the token, you need to have `client_secret.json` in `.auth/`.
+
+Run:
+
+```sh
+docker compose run --rm -e PORT=4444 -p "4444:4444" youtube-uploader python oauth.py
+```
+
+Authorize in browser.
+
+Token will be saved to:
 
 ```text
-./token.json
+.auth/token.@channel.json
 ```
 
-See `docs/YOUTUBE.md` for OAuth setup.
-
-# Getting `client_secret.json` and `token.json` (YouTube OAuth)
+## Getting `client_secret.json`
 
 * Create a new Google Cloud Console project.
   [https://console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate)
@@ -240,20 +252,6 @@ https://www.googleapis.com/auth/youtube.force-ssl
 
 * Add yourself as a test user
   [https://console.cloud.google.com/auth/audience](https://console.cloud.google.com/auth/audience)
-
-* Run:
-
-```sh
-docker compose run --rm -e PORT=4444 -p "4444:4444" -v "./.auth:/.auth" youtube-uploader python oauth.py
-```
-
-Authorize in browser.
-
-Token will be saved to:
-
-```text
-.auth/token.json
-```
 
 ## Release
 
