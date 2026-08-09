@@ -65,6 +65,20 @@ def test_discover_tokens_requires_at_least_one(tmp_path: Path) -> None:
         raise AssertionError("discover_tokens should reject an empty directory")
 
 
+def test_credentials_lock_is_stored_in_hidden_directory(tmp_path: Path) -> None:
+    token_path = write_token(tmp_path)
+
+    with patch.object(
+        youtube_api,
+        "token_for_channel",
+        return_value=youtube_api.ChannelToken(handle="@test", path=token_path),
+    ):
+        youtube_api.load_credentials_for_channel("@test")
+
+    assert (tmp_path / ".locks" / "token.@test.json.lock").exists()
+    assert not (tmp_path / "token.@test.json.lock").exists()
+
+
 def test_make_video_body_without_publish_at(tmp_path: Path) -> None:
     request = make_request(tmp_path)
     assert youtube_api.make_video_body(request) == {

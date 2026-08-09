@@ -136,7 +136,9 @@ def _write_credentials_atomically(path: Path, creds: Credentials) -> None:
 
 def load_credentials_for_channel(handle: str) -> Credentials:
     token = token_for_channel(handle)
-    lock_path = token.path.with_suffix(token.path.suffix + ".lock")
+    lock_dir = token.path.parent / ".locks"
+    lock_dir.mkdir(mode=0o700, exist_ok=True)
+    lock_path = lock_dir / f"{token.path.name}.lock"
 
     with FileLock(lock_path):
         creds = _load_credentials(token.path)
