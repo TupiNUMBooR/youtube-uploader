@@ -28,8 +28,8 @@ ENV VERSION=${VERSION?}
 WORKDIR /app
 
 COPY --from=test /project/app/ /app/
-COPY Dockerfile compose.yml .dockerignore README.md requirements*.txt /app/meta/
-COPY deploy/ /app/meta/deploy/
+COPY compose.yml Dockerfile README.md requirements.txt /app/meta/
+COPY docs/ /app/meta/docs/
 
 EXPOSE 8080
 CMD ["python3", "/app/main.py"]
