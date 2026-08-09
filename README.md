@@ -1,7 +1,7 @@
 <!-- youtube-uploader README.md -->
 # youtube-uploader
 
-![](docs/preview-3.jpg)
+![](docs/preview-4.jpg)
 
 Small HTTP service for uploading videos to one or more YouTube channels.
 
