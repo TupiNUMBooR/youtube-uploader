@@ -17,3 +17,4 @@ htmlcov/
 
 ## User files
 user/
+*.zip
