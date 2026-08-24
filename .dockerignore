@@ -12,8 +12,11 @@ __pycache__/
 .coverage
 htmlcov/
 
+## Git
+.git/
+
 ## Runtime
-.auth
+.auth/
 
 ## User files
 user/
