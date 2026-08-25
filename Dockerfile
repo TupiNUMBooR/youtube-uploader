@@ -30,7 +30,8 @@ WORKDIR /app
 
 COPY --from=test /app/src/ /app/
 COPY --chmod=755 docker/bin/ /usr/local/bin/
-COPY compose*.yml Dockerfile README.md requirements.txt /app/meta/
+COPY compose.yml Dockerfile README.md requirements.txt /app/meta/
+COPY deploy/ /app/meta/deploy/
 COPY docs/ /app/meta/docs/
 
 EXPOSE 8080
