@@ -1,0 +1,15 @@
+services:
+  youtube-uploader:
+    image: ghcr.io/tupinumboor/youtube-uploader:latest
+
+    environment:
+      MAX_VIDEO_BYTES: "10737418240" # 10 GiB
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    volumes:
+      - ./.auth:/.auth
+
+    # Obtain token.@channel.json from client_secret.json:
+    #   docker run --rm -it -e PORT=4444 -p "4444:4444" -v "./.auth:/.auth" ghcr.io/tupinumboor/youtube-uploader oauth
