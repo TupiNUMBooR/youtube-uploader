@@ -54,6 +54,8 @@ class VideoUploadRequest:
     description: str
     privacy: str
     publish_at: datetime | None
+    default_language: str | None = None
+    localizations: dict[str, dict[str, str]] | None = None
 
     @property
     def publish_at_iso(self) -> str | None:
@@ -164,13 +166,20 @@ def make_video_body(request: VideoUploadRequest) -> dict[str, Any]:
         status["privacyStatus"] = "private"
         status["publishAt"] = request.publish_at_iso
 
-    return {
-        "snippet": {
-            "title": request.title,
-            "description": request.description,
-        },
+    snippet: dict[str, Any] = {
+        "title": request.title,
+        "description": request.description,
+    }
+    if request.default_language:
+        snippet["defaultLanguage"] = request.default_language
+
+    body: dict[str, Any] = {
+        "snippet": snippet,
         "status": status,
     }
+    if request.localizations:
+        body["localizations"] = request.localizations
+    return body
 
 
 def _http_status(exc: HttpError) -> int:

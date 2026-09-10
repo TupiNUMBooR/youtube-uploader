@@ -74,15 +74,25 @@ curl -X POST http://localhost:8080/uploads \
   -F 'thumbnail=@thumbnail.jpg'
 ```
 
+Multiple YouTube languages can be supplied in `localizations`:
+
+```bash
+curl -X POST http://localhost:8080/uploads \
+  -F 'metadata={"channel":"@first-channel","privacy":"unlisted","default_language":"en","localizations":{"en":{"title":"My video","description":"English description"},"ru":{"title":"Моё видео","description":"Описание на русском"}}}' \
+  -F 'video=@video.mp4'
+```
+
 Metadata fields:
 
-| Field         | Required | Meaning                                                                    |
-| ------------- | -------- | -------------------------------------------------------------------------- |
-| `channel`     | yes      | YouTube handle beginning with `@`.                                         |
-| `title`       | no       | Video title. Defaults to the uploaded filename without its extension.      |
-| `description` | no       | Video description. Defaults to an empty string.                            |
-| `privacy`     | yes      | `private`, `unlisted`, or `public`.                                        |
-| `publish_at`  | no       | UTC time such as `2026-05-10T08:00:00Z`; scheduled uploads become private. |
+| Field              | Required | Meaning                                                                    |
+| ------------------ | -------- | -------------------------------------------------------------------------- |
+| `channel`          | yes      | YouTube handle beginning with `@`.                                         |
+| `title`            | no       | Video title. Defaults to the uploaded filename without its extension.      |
+| `description`      | no       | Video description. Defaults to an empty string.                            |
+| `default_language` | no       | Default language code; required when `localizations` is supplied.          |
+| `localizations`    | no       | Object mapping language codes to localized `title` and `description`.      |
+| `privacy`          | yes      | `private`, `unlisted`, or `public`.                                        |
+| `publish_at`       | no       | UTC time such as `2026-05-10T08:00:00Z`; scheduled uploads become private. |
 
 Successful response:
 

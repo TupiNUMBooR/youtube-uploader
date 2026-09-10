@@ -106,6 +106,28 @@ def test_make_video_body_with_publish_at(tmp_path: Path) -> None:
     }
 
 
+def test_make_video_body_with_localizations(tmp_path: Path) -> None:
+    request = make_request(tmp_path)
+    request = VideoUploadRequest(
+        video_file=request.video_file,
+        thumbnail_file=request.thumbnail_file,
+        title=request.title,
+        description=request.description,
+        privacy=request.privacy,
+        publish_at=request.publish_at,
+        default_language="en",
+        localizations={
+            "en": {"title": "Test title", "description": "English"},
+            "ru": {"title": "Тест", "description": "Русский"},
+        },
+    )
+
+    body = youtube_api.make_video_body(request)
+
+    assert body["snippet"]["defaultLanguage"] == "en"
+    assert body["localizations"]["ru"]["title"] == "Тест"
+
+
 def test_upload_video_returns_both_urls(tmp_path: Path) -> None:
     request = make_request(tmp_path)
     youtube = MagicMock()

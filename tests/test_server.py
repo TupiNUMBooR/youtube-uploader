@@ -61,6 +61,37 @@ def test_post_upload_accepts_optional_thumbnail() -> None:
     assert request.thumbnail_file is None
 
 
+def test_post_upload_accepts_localizations() -> None:
+    metadata = {
+        "channel": "@test",
+        "privacy": "unlisted",
+        "default_language": "en",
+        "localizations": {
+            "en": {"title": "English", "description": "Description"},
+            "ru": {"title": "Русский", "description": "Описание"},
+        },
+    }
+
+    with (
+        patch.object(server, "token_for_channel"),
+        patch.object(
+            server,
+            "upload_video",
+            return_value=VideoUploadResult("abc123", "https://youtu.be/abc123", "https://www.youtube.com/shorts/abc123"),
+        ) as upload_mock,
+    ):
+        response = client.post(
+            "/uploads",
+            data={"metadata": json.dumps(metadata)},
+            files={"video": ("video.mp4", b"video", "video/mp4")},
+        )
+
+    assert response.status_code == 200
+    request = upload_mock.call_args.args[1]
+    assert request.default_language == "en"
+    assert request.localizations["ru"]["title"] == "Русский"
+
+
 def test_post_upload_rejects_unknown_channel_before_saving_video() -> None:
     metadata = {"channel": "@missing", "privacy": "private"}
 

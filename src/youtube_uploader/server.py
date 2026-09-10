@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 import httplib2
 from google.auth.exceptions import RefreshError, TransportError
 from googleapiclient.errors import HttpError
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 from youtube_uploader.logger import error, log
 from youtube_uploader.time_utils import parse_iso_utc
@@ -31,12 +31,21 @@ PRIVACY_VALUES = {"private", "unlisted", "public"}
 app = FastAPI(title="youtube-uploader", docs_url=None, redoc_url=None)
 
 
+class Localization(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    description: str
+
+
 class UploadMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     channel: str
     title: str | None = None
     description: str = ""
+    default_language: str | None = None
+    localizations: dict[str, Localization] = {}
     privacy: str
     publish_at: str | None = None
 
@@ -63,6 +72,39 @@ class UploadMetadata(BaseModel):
             parse_iso_utc(value)
             return value.strip()
         return None
+
+    @field_validator("default_language")
+    @classmethod
+    def validate_default_language(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().lower()
+        if not value or not value.replace("-", "").isalnum():
+            raise ValueError("default_language must be a language code")
+        return value
+
+    @field_validator("localizations")
+    @classmethod
+    def validate_localizations(cls, value: dict[str, Localization]) -> dict[str, Localization]:
+        if len(value) > 20:
+            raise ValueError("localizations must contain at most 20 languages")
+        normalized: dict[str, Localization] = {}
+        for language, localization in value.items():
+            language = language.strip().lower()
+            if not language or not language.replace("-", "").isalnum():
+                raise ValueError("localization keys must be language codes")
+            if language in normalized:
+                raise ValueError(f"duplicate localization language: {language}")
+            normalized[language] = localization
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_localization_defaults(self) -> "UploadMetadata":
+        if self.localizations and not self.default_language:
+            raise ValueError("default_language is required when localizations are provided")
+        if self.default_language and self.default_language not in self.localizations:
+            raise ValueError("default_language must be present in localizations")
+        return self
 
 
 def api_error(status: int, code: str, message: str, **extra: Any) -> JSONResponse:
@@ -136,6 +178,14 @@ def create_upload(
                 thumbnail_file=thumbnail_path,
                 title=title,
                 description=parsed.description.strip(),
+                default_language=parsed.default_language,
+                localizations={
+                    language: {
+                        "title": localization.title.strip(),
+                        "description": localization.description.strip(),
+                    }
+                    for language, localization in parsed.localizations.items()
+                },
                 privacy=parsed.privacy,
                 publish_at=parse_iso_utc(parsed.publish_at) if parsed.publish_at else None,
             )
